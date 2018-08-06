@@ -1,25 +1,134 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
-
+## Loading and Preprocessing the data
+### Loading
+- The data is unzipped 
+- It is extracted
+- activity.csv is then opened
+```{r echo=TRUE}
+data<-read.csv("activity.csv")
+str(data)
+```
+### Processing
+The date column is in 'factor' class. So it is converted to 'Date' class.
+```{r echo=TRUE}
+data$date<-as.Date(data$date)
+str(data)
+```
+Now it is perfectly fine.
 
 
 ## What is mean total number of steps taken per day?
+### Total number of steps
+First the total number of steps for each day is calculated.
+The code is given below:
+```{r echo=TRUE}
+totsteps<-aggregate(steps~date,data,FUN = sum,na.rm=TRUE)
+head(totsteps)
+```
+The total number of steps for each day is calculated.Now a histogram is plotted of the total number of steps taken each day.
+```{r echo=TRUE ,fig.align='center'}
+plot(totsteps,type = "h",lwd=5,col="blue",xlab = "Date",ylab = "Total steps",main = "Total steps per day")
+```
+The histogram is plotted.
+Now the mean and median of this total number of steps is calculated.
+```{r echo=TRUE}
+summary(totsteps$steps)
+```
+```{r echo=TRUE}
+##The mean is 
+mean(totsteps$steps)
+##The median is 
+median(totsteps$steps)
+```
+Thus we get that the mean and median.
 
+##What is the average daily activity pattern?
+The mean of the steps is found out for the 5 minute interval of all the days.
+```{r echo=TRUE ,fig.align='center'}
+activ<-aggregate(steps~interval,data=data,na.rm=TRUE,FUN = mean)
+plot(activ,type="l",xlab = "5 minute interval",ylab = "average steps",main = "Time Series Plot")
+```
+Thus the required plot is obtained.
 
+Maximum Number of average steps is found out from the dataset activ.
+Then the corresponding interval.
+```{r echo=TRUE}
+maxstep<-max(activ$steps)
+activ[which(activ$steps==maxstep),]
+activ[which(activ$steps==maxstep),]$interval
+```
+The interval for maximum average steps is thus found.
 
-## What is the average daily activity pattern?
+##Imputing missing values
 
+### Number of missing values 
+First the NA positions are located .Then the position are counted.
+```{r echo=TRUE}
+napos<-is.na(data$steps)
+sum(napos)
+```
+Hence it is calculated.
 
+### Creating a dataset with NA values filled
+A vector of the mean steps for an interval is made.
+```{r echo=TRUE}
+means<-activ$steps[match(activ$interval,data$interval)]
+```
+Then the location of the missing values are found and replaced by the mean steps for that interval.
+```{r echo=TRUE}
+## A new dataset is created which is a copy of the old data set
+newdata<-data
+newdata$steps[is.na(data$steps)]=means[which(is.na(data$steps))]
+head(newdata)
+```
+Thus the new dataset is created with inputed values.
 
-## Imputing missing values
+###Variation from the original dataset
+The total number of steps for each day is calculated for the new data set and a histogram is plotted.
+```{r echo=TRUE,fig.align='center'}
+newtot<-aggregate(steps~date,newdata,FUN = sum)
+plot(newtot,type = "h",lwd=5,col="blue",xlab = "Date",ylab = "Total steps",main = "Total steps per day")
+```
+The histogram is plotted.
+Now the mean and median of this new total number of steps is calculated.
+```{r echo=TRUE}
+summary(newtot$steps)
+```
+```{r echo=TRUE}
+##The mean is 
+mean(newtot$steps)
+##The median is 
+median(newtot$steps)
+##Variation of mean and median
+## mean variation
+mean(totsteps$steps)-mean(newtot$steps)
+## median variation
+median(totsteps$steps)-median(newtot$steps)
+```
+Thus it is found out that the mean for the newdata set remains the same. But the median shifts more towards the mean.If we round off the values of both mean and median we find that they are same. Thus inputing the NA values gives us a distinct central tendency.
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+##Are there differences in activity patterns between weekdays and weekends?
+###Creating a column of factors of weekdays and weekends based on date
+Using the weekdays() function the weekday of the date is calculated and based on whether it is a weekday or weekend thw column is made.
+```{r echo=TRUE}
+newdata$day<-sapply(newdata$date, function(x){if (weekdays(x)=="Monday" |  weekdays(x)=="Tuesday"|weekdays(x)=="Wednesday"| weekdays(x)=="Thursday" | weekdays(x)=="Friday") {y<-"Weekday"} else {y<-"Weekend"};y})
+newdata$day<-as.factor(newdata$day)
+head(newdata)
+```
+###Plotting average steps based on daytype
+First the data is aggregated based on day in a new data set daytype
+and finally the graph is plotted.
+```{r echo=TRUE,fig.align='center'}
+library(ggplot2)
+daytype<-aggregate(steps~interval+day,data = newdata,FUN = mean)
+g<-ggplot(daytype,aes(interval,steps))+geom_line(aes(color=day))+facet_wrap(.~day,ncol = 1,nrow = 2)+labs(x="5 Minute Interval",y="Average Steps",title="Time Series plot based on daytype")
+print(g)
+```
